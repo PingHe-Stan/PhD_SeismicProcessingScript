@@ -1,0 +1,16 @@
+! This script is used to shorten the command for display recorded traces using display _recno(1:30)
+
+default 1 1 The beginning No. of Record to display
+default 2 30 The ending No. of Record to display
+
+!sdef a=#1
+!sdef b=#2
+
+display _recno(#1:#2)
+norm sw
+zoom all 2.5
+
+stw -5 30
+hc x1 p
+
+return

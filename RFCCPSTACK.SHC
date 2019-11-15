@@ -1,0 +1,58 @@
+! RFCCPSTACK.SHC
+! ==================================================
+!
+! Perform RF CCP stacking along profile in lat, lon or distance, with specific range of backazimuth of RFs:
+! SHGMT will be performed after summation using piercing point latitude or longitutde, or distance as plotting identifier
+! Date: 2016-10-13 Written by: Stan He
+! Two other self-written SHCs are required: PSPIERPROFILE.SHC, CCPSTACK.SHC
+! 
+! The final span of RF traces for plotting is from -5 s to 35 s.
+!
+
+default 1 RF Enter the name of RF file to be read:
+default 2 20 Enter the bin or window size to average RFs:
+default 3 10 Enter the shifting span, MUST larger than zero:
+default 4 0 Enter the start value of lat lon or dist for CCP Stacking:
+default 5 300 Enter the end value of lat lon or dist for CCP Stacking:
+default 6 55 Enter the depth for calculation of conversion lat and lon:
+default 7 signoise Enter the Qheader for CCP stacking identifier:
+default 8 7.8 Enter the estimated distance to correct elevation:
+default 9 0 Enter the backazimuth of interest for CCP stacking:
+default 10 360 Enter the backazimuth of interest for CCP stacking:
+default 11 line_aa Enter the profile line to calculate projected distance:
+
+sdef lowerazi #9
+sdef upperazi #10
+
+read #1 all
+
+! Only RFs from specific range of backazimuth will be kept for further analysis
+del _comp(t)
+del _azimuth~("lowerazi:"upperazi)
+
+! Perform moveout-correction and elevation correction for coherent Ps phase stacking
+shift all -10
+! Step One: Setting the header of RFs in display, the projected pr-lat,pr-lon,and distance will be written for further application  
+pspierprofile #6 #11
+nr
+rfelecor #8
+rd
+! Note: After PSPIERPROFILE.SHC operation, Three Kinds of Header (dcvreg, dcvinci, signoise)  will be updated based on the projected PS points.
+psmout ;;;-8;50;;
+! Step Two: Perform CCP stacking and New file will be generated and deleted automatically using subroutine ccpstack
+del h:all
+ccpstack #2 #3 #4 #5 #7 #7
+! Note: After CCPSTACK.SHC operation, THREE KINDS of Header will be updated, one is the Identifier Header(dcvreg, dcvinci, signoise), another one is "mark" where the number of traces for each summation will be kept for possible illustration, the last one is "station", which belongs to one of stations under which the traces have been summed during CCP stacking.
+
+del all
+del h:all
+
+! Step Three: Read in newly created CCP stacking RF file and generate SHGMT to plot
+read |#7|#7| all
+shift all -8
+shgmt #7 -5 35
+
+!@SYSTEM |rm|$BLANK|#7|*|
+@SYSTEM |rm|$BLANK|PSPIER|*|
+
+return

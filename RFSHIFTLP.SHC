@@ -1,0 +1,14 @@
+! Using RF to obtain GMT drawing and summed RF
+! PH 2015.11.12
+!
+sdef ntr
+calc i &ntr = $dsptrcs
+shift all -10
+doublefil lp_3s_4o
+psmout 1 0.05 -5 75
+display h:all
+del |1|-|"ntr|
+shgmt azimuth -5 75
+sum all
+hide |1|-|"ntr|
+return

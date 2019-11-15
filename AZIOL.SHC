@@ -1,0 +1,63 @@
+! Automatic create averaged RFs according to their back-azimuth degree. (Azimuthal Overlapping) Both the Bin size and Overlapping range are defined interactively.
+!      =============
+!
+! This script is created in order to retrieve piercing points along certain profile
+! Written by: Ping He Date: 2016.8.19
+! 
+!  #1 = Bin Size  #2 = Shifting length, and thus Overlapping Span equals ( #1 - #2 )
+! 
+! "This SHC is used to visualize averaged the azimuthal variation of RFs beneath the same station to created noise suppressed RFs and gradually variated RF."
+
+default 1 20        Enter bin or window size to average RFs:
+default 2 10        Enter the shifting span (must larger than zero):
+default 3 0         Enter the starting border of the total range to be averaged:
+default 4 360       Enter the ending border of the entire range to be averaged:
+default 5 AZIMUTHAL Enter the name of Qfile to store the averaged RFs:
+
+! The number of RF traces in display
+sdef trcnu
+! The trace number of the newly created summed & averaged RFs to be written to new files
+sdef trcsum 
+! The value of averaged attribute (in this case, that is azimuth) given the newly created RF
+sdef attsum 
+! Window border limits
+sdef lowerlimit
+sdef upperlimit
+sdef numofsum
+
+calc i &lowerlimit = #3
+calc i &upperlimit = #3 + #1
+calc i &attsum = #3 + #2
+
+nr
+hide all
+
+aver_start:
+if "upperlimit gti #4   goto/forward aver_exit:
+display _azimuth("lowerlimit:"upperlimit)
+calc i &trcnu = $dsptrcs
+calc i &trcsum = $dsptrcs + 1
+
+! Note that unless otherwised specified using qualifier /nonorm, sum in SH will automaticly normalized by the number of inputs tracs
+sum all;;;&numofsum
+
+! _created can by replaced by "trcsum, but to use _created is much more convenient. 
+set _created azimuth "attsum
+set _created comment |"lowerlimit|-|"upperlimit|:|"numofsum|Traces|
+set _created mark "numofsum
+
+write #5 _created
+del _created
+
+hide all 
+
+calc i &upperlimit = "upperlimit + #2
+calc i &lowerlimit = "lowerlimit + #2
+calc i &attsum = "attsum + #2
+
+goto aver_start:
+aver_exit:
+
+return
+
+

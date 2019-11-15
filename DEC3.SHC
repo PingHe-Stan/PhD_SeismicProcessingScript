@@ -1,0 +1,77 @@
+! DEC.SHC
+! 
+! deconvolvs all 3-comp-traces appeared in window.
+! traces must be displayed by L,Q,T for each record.
+! the invers-filter is generated from each L-comp, 
+! then the L-Q-T traces are folded with the invers-filter.
+
+default 1 ;;          first time of decon window
+default 2 ;;          second time of decon window
+default 3 1           control parameter of dcv
+
+sdef cnt 1
+sdef cnt1
+sdef ntr
+sdef ntr1
+sdef max
+sdef min
+sdef normfac
+
+nr
+dtw
+
+! Deconvolution
+del h:all
+calc i &cnt = 1
+calc i &ntr = $dsptrcs
+calc i &ntr1 = $dsptrcs + 1
+decon_start:
+if  "cnt gti "ntr      goto/forward decon_exit:
+spiking 1 #1 #2 #3
+fold 1-3 ;;; "ntr1
+shift _created ^t-origin(1)
+del "ntr1
+hide 1-3
+calc i &cnt = "cnt + 3
+goto decon_start:
+decon_exit:
+
+! Aligning traces by letting L spikes at 0 sec.
+calc i &cnt = 1
+shift_start:
+if  "cnt gti $dsptrcs      goto/forward shift_exit:
+calc i &cnt1 = "cnt + 2
+am "cnt #1 #2 ;;;;&max
+calc r &max = 0 - "max
+shift |"cnt|-|"cnt1| "max
+calc i &cnt = "cnt + 3
+goto shift_start:
+shift_exit:
+
+! Multiplying -1 to the deconvoluted Q and T traces.
+calc i &cnt = 2
+calc i &cnt1 = "cnt + 1
+mul_start:
+if  "cnt gti $dsptrcs      goto/forward mul_exit:
+trcfct "cnt mul -1
+trcfct "cnt1 mul -1
+calc i &cnt = "cnt + 3
+calc i &cnt1 = "cnt + 1
+goto mul_start:
+mul_exit:
+
+do_norm:
+calc i &cnt = 1
+calc i &cnt1 = 3
+nm_start:
+if "cnt gti $dsptrcs      goto/forward nm_exit:
+am "cnt -5 5 ;; &max
+calc r &normfac = 1.0 div "max
+trcfct |"cnt|-|"cnt1| mul "normfac
+calc i &cnt = "cnt + 3
+calc i &cnt1 = "cnt1 + 3
+goto nm_start:
+nm_exit:
+
+rd
+return

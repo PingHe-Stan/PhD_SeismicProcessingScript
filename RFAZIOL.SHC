@@ -1,0 +1,24 @@
+! RF station azimuthal averaging simplified procedure
+
+default 1 RF Enter the name of RF file to be read:
+
+read #1 all
+
+del _comp(t)
+shift all -10
+psmout ;;;-8;45;;
+cut all -6 40
+aziol 20 10 5 200 azimuthal
+del all
+del h:all
+dtw
+
+read azimuthal all
+shift all -6
+shgmt azimuth -5 35
+del h:all
+hide all
+rd
+
+return
+

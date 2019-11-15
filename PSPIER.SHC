@@ -1,0 +1,58 @@
+! PSPIER.SHC
+! ==========
+!
+! calculates P-to-S conversion points at a given depth for receiver
+! functions shown in SH window at a given depth.
+!
+! velocity model: file "pspier.mod". Velocity data are in the order of
+! "depth vp vs no_of_layers", starting at surface.
+!
+! input: conversion depth.
+! values used: station coordinates, event BAZ and SLOWNESS.
+! it uses a FORTRAN program "pspier.f".
+! conversion points (latitude and longitude) are written to
+! header DCVREG and DCVINCI.
+!
+default 1 410          conversion depth (km)
+
+sdef cnt 1
+sdef slat
+sdef slon
+sdef pcrlat
+sdef pcrlon
+
+! echo some values to file DSLOW.STX which is served as input file
+! of fortran program "pspier"
+echo_ch/new dslow
+echo $dsptrcs #1
+e_start:
+   if  "cnt gti $dsptrcs  goto/forward e_exit:
+   call statloc ^station("cnt) &slat &slon
+   echo "slat "slon ^slowness("cnt) ^azimuth("cnt)
+   calc i &cnt = "cnt + 1
+   goto e_start:
+e_exit:
+echo_ch
+
+! call fortran program "pspier" to calculate piercing points.
+! output to file PSPIER.STX
+@ SYSTEM pspier
+@ SYSTEM |rm|$BLANK|DSLOW.STX|
+
+!return
+
+! writes pcr-lat and pcr-lon to header DCVREG and DCVINCI.
+echo
+echo ...writing pcr-lat and pcr-lon to header DCVREG and DCVINCI
+calc i &cnt = 1
+set_start:
+   if  "cnt gti $dsptrcs  goto/forward set_exit:
+   calc s &pcrlat =  %pspier("cnt) parse 5
+   calc s &pcrlon =  %pspier("cnt) parse 6
+   set/file "cnt dcvreg "pcrlat
+   set/file "cnt dcvinci "pcrlon
+   calc i &cnt = "cnt + 1
+   goto set_start:
+set_exit:
+
+return

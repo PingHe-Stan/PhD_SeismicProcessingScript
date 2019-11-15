@@ -1,0 +1,20 @@
+! set the p slowness 
+
+default 1 1         first trace
+default 2 $dsptrcs  last seismogram
+
+sdef cnt #1               ! counter
+sdef slo                ! slowness of P wave
+ 
+statevent_start:
+   if  "cnt gti #2  goto/forward statevent_exit:
+
+   call slowness p ^distance("cnt) ^depth("cnt) &slo   
+   set/file "cnt slowness "slo
+
+   calc i &cnt = "cnt + 1
+   goto statevent_start:
+statevent_exit:
+
+return
+

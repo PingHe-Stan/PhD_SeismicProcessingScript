@@ -1,0 +1,32 @@
+! RO3T.SHC
+! 3-d rotation of all traces by theoretical angles (AZIMUTH and INCI).
+!
+sdef cnt 1
+sdef trmax $dsptrcs
+sdef slat
+sdef slon
+sdef dist
+sdef azim
+sdef inci
+
+nr
+dtw
+del h:all
+
+loop_start:
+   if "cnt gti "trmax      goto loop_exit:
+   call statloc ^station &slat &slon
+   call locdiff "slat "slon ^lat ^lon &dist &azim
+   call inci "dist ^depth &inci
+   rot3 1-3 "azim "inci
+   hide 1-3
+!   set/file/mod 1-3 azimuth "azim
+!   set/file/mod 1-3 inci "inci
+   calc i &cnt = "cnt + 3
+   goto loop_start:
+loop_exit:
+
+rd
+return
+
+

@@ -1,0 +1,25 @@
+! writes station latitude and longitude to header
+! DCVREG: station latitude
+! DCVINCI: station longitude
+
+default 1 1         first trace
+default 2 $dsptrcs  last trace
+default 3 dcvreg    header which restores station latitude
+default 4 dcvinci   header which restores station longitude
+
+sdef cnt #1               ! counter
+sdef slat                 ! station latitude
+sdef slon                 ! station longitude
+ 
+statevent_start:
+   if  "cnt gti #2  goto/forward statevent_exit:
+
+   call statloc ^station("cnt) &slat &slon
+   set/file "cnt dcvreg "slat
+   set/file "cnt dcvinci "slon
+
+   calc i &cnt = "cnt + 1
+   goto statevent_start:
+statevent_exit:
+
+return

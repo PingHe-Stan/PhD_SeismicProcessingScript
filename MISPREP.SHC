@@ -1,0 +1,48 @@
+! MISPREP.SHC
+!
+default 1 y station locations already saved in headers: dcvreg and dcvinci? (y)
+
+sdef cnt 1
+sdef slat
+sdef slon
+sdef ascf ps_migr.ori
+
+stw 0 200
+
+echo ... extracting infos: (PS_MIGR.PAR)
+
+if #1 eqs y goto/forward info:
+setstat:
+echo ... save station location in headers: dcvreg and dcvinci.
+set_station;;
+
+info:
+echo_ch/new PS_MIGR.PAR
+echo $dsptrcs 0 120
+loop_start:
+   if "cnt gti $dsptrcs goto loop_exit:
+   echo ^dcvreg("cnt) ^dcvinci("cnt) ^slowness("cnt) ^azimuth("cnt)
+   calc i &cnt = "cnt + 1
+   goto loop_start:
+loop_exit:
+echo_ch
+
+echo ... dumping ASCII-data: (PS_MIGR.ORI)
+echo_ch/new ps_migr.ori
+echo_ch
+
+
+sdef n1 1
+sdef n2
+more:
+calc i &n2 = "n1 + 499
+if "n2 gei $dsptrcs goto/forward last:
+echo trace "n1 to "n2
+writea "ascf |"n1|-|"n2|
+calc i &n1 = "n2 + 1
+goto more:
+
+last:
+echo trace "n1 to $dsptrcs
+writea "ascf |"n1|-|$dsptrcs|
+return

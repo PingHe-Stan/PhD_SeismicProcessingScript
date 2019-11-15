@@ -1,0 +1,85 @@
+! file SET_EVENT_BAZ.SHC
+!      =============
+!
+! input file has this format
+! 1234567890123456789012345678901234567890123456789012345678901234567890
+! 940429 0711 29.60 -28.30  -63.25 562.0 6.3 132 0.0 539  8 151 A
+! capital letters with .STX ending
+! this version writes the back azimuth to the q-header, not the azimuth
+
+default 1 PDE            list file (*.STX)
+default 2 1              event number
+default 3 y              update header file? |(y|$slash|n)|
+
+sdef head
+sdef line
+sdef cnt #2
+sdef year
+sdef month
+sdef day
+sdef hour
+sdef min
+sdef sec
+sdef msec
+sdef orig
+sdef lat
+sdef lon
+sdef depth
+sdef mag
+
+if #3 nes y     goto/forward continue:
+calc s &head = |$slash|file
+continue:
+
+!echo_ch/new sys$login:kls_counter
+echo "cnt
+echo_ch
+
+! input file has this format
+! 1234567890123456789012345678901234567890123456789012345678901234567890
+! 940429 0711 29.60 -28.30  -63.25 562.0 6.3 132 0.0 539  8 151 A
+
+echo >>>>>> reading event of line "cnt in file #1 <<<<<<
+calc s &line = %#1("cnt)
+calc s &year = "line extract 1 2
+calc s &month = "line extract 3 2
+calc s &day = "line extract 5 2
+calc s &hour = "line extract 8 2
+calc s &min = "line extract 10 2
+calc s &sec = "line extract 13 2
+  if "sec gei 10      goto/forward cont_sec:
+  calc s &sec = "line extract 14 1
+  cont_sec:
+calc s &msec = "line extract 16 2
+calc s &msec = |"msec|0|
+calc s &orig = |"day|,|"month|,|"year|,|
+calc s &orig = |"orig|"hour|,|"min|,|"sec|,|"msec|
+calc t &orig = "orig tadd 0
+calc s &lat = "line extract 19 6              ! lat
+calc s &lon = "line extract 26 7              ! lon
+calc s &depth = "line extract 34 3            ! depth
+calc s &mag = "line extract 40 3              ! mb
+
+exec |set|$blank|"head|$blank|all|$blank|origin|$blank|"orig|
+exec |set|$blank|"head|$blank|all|$blank|depth|$blank|"depth|
+exec |set|$blank|"head|$blank|all|$blank|magnitude|$blank|"mag|
+
+echo event:
+echo origin time: "orig
+echo latitude, longitude: "lat , "lon
+echo magnitude: "mag
+echo focal depth: "depth
+echo
+epi_dist_baz "lat "lon "depth #3
+
+if #3 nes y     goto/forward noupdate:
+   echo
+   echo >>> header file updated <<<
+   return
+noupdate:
+   echo
+   echo >>> changes only in memory <<<
+   return
+
+
+

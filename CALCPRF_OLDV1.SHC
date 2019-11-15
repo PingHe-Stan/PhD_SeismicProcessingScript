@@ -1,0 +1,19 @@
+! file CALCPRF.SHC
+!      =============
+!
+! calculate PRF using one command
+sdef ntr
+calc i &ntr = $dsptrcs
+al all p-onset
+cut all -100 300
+display_zne_hp
+doublefil bp_1s_30s_4o
+ro3t
+display h:all
+del |1|-|"ntr|
+dec3 -10 90 1
+display h:all
+del |1|-|"ntr|
+cut all -10 100
+rd
+return

@@ -1,0 +1,43 @@
+! RFELECOR.SHC - RF elevation correction.
+! ======================
+! For station situated highly above sea-level, the first 0.5 second (roughly 4.5km) could not be attributed to the discontiuity below surface of Earth, but rather the elevation above surface. Thus elevation correction is necessary for further RF analysis. (CCP stacking; Back-projection Migration; Ps phase picking etc)
+!
+!
+! In Himalaya study, for profile along MBT, the estimated distance in km for 1s Ps-delayed time is 5.95 due to sedimentary Vp/Vs, while for profile along STD,the distance is 7.95 km, for YSZ, the distance is 7.75
+!
+! Perform trace shifting after alignment of spiking to zero based on the elevation of station. 
+!
+! Date: 2016-10-9 Written by: Stan He
+!
+! Prior to this operation, alignment of P-spiking onset is A MUST!
+!
+
+
+echo The following input value is highly dependent on Vp to Vs ratio
+
+default 1 9 Enter the estimated distance in km for 1s Ps-delayed time
+
+sdef cnt 1
+sdef trcnum $dsptrcs
+sdef slat
+sdef slon
+sdef sele
+sdef den #1 ! Denominator
+sdef timecor ! Time correction
+
+! Since the elevation stored in $SH_ROOT/inputs/STATINF.DAT is in meters, the input should be converted into meter scale as well.
+! The sign(minus here) determines how to shift the obtained RF trace.
+! The positive sign means to shift all trace to the right (forward), i.e., the zero point on time axis will be moved backward. This happens only when the station is situated below sea-level, like on the sea-floor.
+! The negative sign(minus) here means to shift the corresponding trace backward (to the left), and thus the zero point on time axis will be further into the right (forward).
+
+calc r &den = -1000 * "den
+correct_start:
+if "cnt gti "trcnum goto/forward correct_exit:
+call statloc ^station("cnt) &slat &slon;;;&sele
+calc r &timecor = "sele div "den
+shift "cnt "timecor 
+calc i &cnt = "cnt + 1
+goto correct_start:
+correct_exit:
+return
+

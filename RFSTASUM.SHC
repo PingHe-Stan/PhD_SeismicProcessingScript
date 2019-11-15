@@ -1,0 +1,79 @@
+! RFSTASUM.SHC
+! ==================================================
+!
+! RF station summation along profile with specific range of backazimuth of RFs
+! PSMOUT will be performed prior to summation, SHGMT will be performed after summation using station latitude or longitutde as station identifier
+! Date: 2016-10-7 Written by: Stan He
+! Revised: 2016-10-12 Purpose: RF Elevation correction performance Added 
+!
+! The final span of RF traces for plotting is from -5 s to 35 s.
+!
+
+default 1 RF Enter the name of RF file to be read:
+default 2 0 Enter the lower limit of back-azimuth to be summed for each station:
+default 3 360 Enter the upper limit of back-azimuth to be summed for each station:
+default 4 STASUM Enter the name of created QFILE for RF station summation:
+default 5 dcvreg Enter identifier of RF plotting dcvreg for lat dcvinci for lon:
+default 6 9 Enter the estimated travelling distance in km for 1s Ps Delay-time:
+
+sdef cnt 1
+sdef sname
+sdef lowerazi #2
+sdef upperazi #3
+
+
+read #1 all
+
+! Only RFs from specific range of backazimuth will be kept for further analysis
+del _comp(t)
+hide all
+display _azimuth("lowerazi:"upperazi)
+del h:all
+
+! Perform moveout-correction for Ps phase
+shift all -10
+psmout ;1;;-8;45;;
+cut all -6 40
+
+! Step One: Retrieve all the station name for current file
+echo_ch station
+list_all station
+echo_ch 
+
+echo_ch stanameprocedure
+switch capcnv off
+ECHO cat STATION.STX $HEXCHAR7C(1) awk $HEXCHAR27(1) $HEXCHAR7B(1) print |$HEXCHAR24(1)|3 $HEXCHAR7D(1) $HEXCHAR27(1) $HEXCHAR3E(1) STATMP
+ECHO sort -u STATMP $HEXCHAR3E(1) STANAME.STX
+SWITCH CAPCNV ON
+echo_ch
+
+@SYSTEM |sh|$BLANK|STANAMEPROCEDURE.STX|
+@SYSTEM |rm|$BLANK|STATMP|$BLANK|STATION.STX|
+
+! Step Two Station Summation Loop
+hide all
+sum_start:
+if "cnt gti %STANAME.STX(0) goto/forward sum_exit:
+calc s &sname = %STANAME.STX("cnt) parse 1
+sum _station("sname)
+set _created station "sname
+write #4 _created
+del _created
+calc i &cnt = "cnt + 1
+goto sum_start:
+sum_exit:
+
+del all
+del h:all
+
+read #4 all
+shift all -6
+set_station;;
+rfelecor #6
+shgmt #5 -5 35
+
+@SYSTEM |rm|$BLANK|PSMOUT|*|
+@SYSTEM |rm|$BLANK|STANAME|*|
+@SYSTEM |rm|$BLANK|STASUM|*|
+
+return

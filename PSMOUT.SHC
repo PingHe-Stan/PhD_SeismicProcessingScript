@@ -1,0 +1,91 @@
+! PSMOUT.SHC
+! 
+! Moveout of PdS and related multiples in the coda of P wave.
+! Traces must be first aligned by P (0 sec).
+! model: IASP91 (/home/st/yuan/model/iasp91.dat)
+! Reference P-slowness 6.4s/degree.
+! It executes the FORTRAN program psmout.f.
+! 
+! XY July 2003
+!
+switch capcnv off
+DEFAULT 1 1          phase type: 1-Ps 2-PpPs 3-PpSs 4-PsSs
+DEFAULT 2 ^DELTA(1)  sampling-rate of output traces (sec)
+DEFAULT 3 -20        low bound of output time window
+DEFAULT 4 90         high bound of output time window
+DEFAULT 5 ;;         model [press ENTER for using the iasp91]
+SWITCH CAPCNV ON
+
+sdef cnt 1
+sdef tmpasc TMP_PSMOUT.ASC    ! temparary ASCII file
+sdef tmpq   TMP_PSMOUT
+
+if #1 eqi 1 goto/forward ps:
+if #1 eqi 2 goto/forward ppps:
+if #1 eqi 3 goto/forward ppss:
+if #1 eqi 4 goto/forward psss:
+echo wrong phase selected.
+return
+ps:
+sdef outq   PSMOUT
+goto/forward phaseok:
+ppps:
+sdef outq   PPPSMOUT
+goto/forward phaseok:
+ppss:
+sdef outq   PPSSMOUT
+goto/forward phaseok:
+psss:
+sdef outq   PSSSMOUT
+phaseok:
+
+echo_ch/new "tmpasc
+echo |"outq|.QBN|
+echo $dsptrcs #3 #4 #2 #1
+if #5 eqs ;; goto/forward iasp:
+echo 1 #5
+goto/forward modselok:
+iasp:
+echo 0 IASP91
+modselok:
+echo_ch
+
+nr
+stw #3 #4
+echo/no_crlf checking trace length ...... 
+append_start:
+  if "cnt gti $dsptrcs goto/forward append_exit:
+  app_window "cnt
+  calc i &cnt = "cnt + 1
+  goto append_start:
+append_exit:
+echo done.
+echo/no_crlf writing temperary binary data ...... 
+@ SYSTEM |touch|$BLANK|"TMPQ|.QBN|$BLANK|"TMPQ|.QHD|
+@ SYSTEM |rm|$BLANK|"TMPQ|.QBN|$BLANK|"TMPQ|.QHD|
+resample all #2
+switch chatty off
+write "tmpq all
+switch chatty on
+echo done.
+
+echo/no_crlf writing temperary ascii data ...... 
+!stw #3 200
+writea/npl=1 "tmpasc all slowness
+echo done.
+
+echo move-out calculation ...
+@ SYSTEM psmout
+@ SYSTEM |mv|$BLANK|"TMPQ|.QHD|$BLANK|"OUTQ|.QHD|
+@ SYSTEM |rm|$BLANK|"TMPASC|
+@ SYSTEM |rm|$BLANK|"TMPQ|.QBN|
+
+del h:all
+hide all
+dtw
+read "outq all
+shift all #3
+rd
+
+return
+

@@ -1,0 +1,114 @@
+! PSPIERPROFILE.SHC is rewritten based on PSPIER.SHC by Stan He
+! ==========
+! 
+! calculates P-to-S conversion points at a given depth for receiver
+! functions shown in SH window at a given depth. and then project conversion
+! points onto a certain profile line so as to investigate the CCP bin stacking
+! variation of wiggle
+!
+!  velocity model: file "pspier.mod". Velocity data are in the order of
+! "depth vp vs no_of_layers", starting at surface.
+!
+! input: conversion depth. & name of the line for certain profile
+! values used: station coordinates, event BAZ and SLOWNESS.
+! it uses a FORTRAN program "pspier.f". and GMT program mapproject
+! projected conversion points (latitude and longitude) are written to
+! header DCVREG and DCVINCI and their distance to start points are written to
+! header SIGNOISE
+!
+! After writing distance to signoise header, psmout will be performed in order to making further CCP stacking
+!
+! Date: 2016-9-28
+!
+! Profile line must be named all in CAPITAL LETTERS and with a .STX suffix
+! The first line of this Profile line is a standard GMT separator "> name"
+
+default 1 55         conversion depth (km)
+default 2 line_aa    profile line for pspoints to be projected(ALL CAPITAL & STX ending)
+
+sdef cnt 1
+sdef slat
+sdef slon
+sdef pcrlat
+sdef pcrlon
+sdef startlat
+sdef startlon
+sdef dist
+sdef tmp
+
+! retrieve start points from profile line file
+
+   calc s &startlat = %#2(2) parse 2
+   calc s &startlon = %#2(2) parse 1
+
+! echo some values to file DSLOW.STX which is served as input file
+! of fortran program "pspier"
+echo_ch/new dslow
+echo $dsptrcs #1
+e_start:
+   if  "cnt gti $dsptrcs  goto/forward e_exit:
+   call statloc ^station("cnt) &slat &slon
+   echo "slat "slon ^slowness("cnt) ^azimuth("cnt)
+   calc i &cnt = "cnt + 1
+   goto e_start:
+e_exit:
+echo_ch
+
+! call fortran program "pspier" to calculate piercing points.
+! output to file PSPIER.STX
+@ SYSTEM pspier
+@ SYSTEM |rm|$BLANK|DSLOW.STX|
+
+
+! because the concatenation symbols "|" have an limited number of usage when calling system command, we use echo to genereate a Shell script line, and use echo_ch to store those Shell script lines into a Shell script file
+! after finishing the script, we apply @system |sh|$BLANK|SHSCRIPT.STX| to execute this shell script
+
+echo_ch/new projprocedure
+switch capcnv off
+! since the default input of GMT is lon($6 in PSPIER.STX) and lat($5 in PSPIER)
+! the output of mapproject has appended three columns $3 minimal distance in meter, $4 longtitude of projected piercing points on certain profile, $5 latitude of projected piercing points on the corresponding line of the profile of interest
+! call GMT mapproject with qualifier -L to calculate the projected piercing points on the profile line of interest
+
+ECHO cat PSPIER.STX $HEXCHAR7C(1) awk $HEXCHAR27(1) $HEXCHAR7B(1) print |$HEXCHAR24(1)|6|,|$HEXCHAR24(1)|5 $HEXCHAR7D(1) $HEXCHAR27(1) $HEXCHAR3E(1) lineproject_tmp
+ECHO cat lineproject_tmp $HEXCHAR7C(1) mapproject |$HEXCHAR2D(1)|L|#2|.STX $HEXCHAR3E(1) lineproject_tmp2
+ECHO cat lineproject_tmp2 $HEXCHAR7C(1) awk $HEXCHAR27(1) $HEXCHAR7B(1) print |$HEXCHAR24(1)|5|,|$HEXCHAR24(1)|4 $HEXCHAR7D(1) $HEXCHAR27(1) $HEXCHAR3E(1)  PROJECTPSPOINTS.STX
+
+SWITCH CAPCNV ON
+echo_ch
+
+@SYSTEM |sh|$BLANK|PROJPROCEDURE.STX|
+@SYSTEM |rm|$BLANK|lineproject_tmp|*|
+
+
+! writes the projected pcr-lat and pcr-lon to header DCVREG and DCVINCI.
+echo 
+echo ...writing the projected pcr-lat and pcr-lon to header DCVREG and DCVINCI
+echo 
+echo ...calculate the distance between start and ps points and write it into header SIGNOISE 
+
+calc i &cnt = 1
+set_start:
+
+   if  "cnt gti $dsptrcs  goto/forward set_exit:
+
+   calc s &pcrlat = %projectpspoints("cnt) parse 1
+   calc s &pcrlon = %projectpspoints("cnt) parse 2
+   calc/fmt=<%4.5@f> r &pcrlat = "pcrlat
+   calc/fmt=<%4.5@f> r &pcrlon = "pcrlon
+
+! calculate the distance from the start points to projected pspoints
+   call locdiff "pcrlat "pcrlon "startlat "startlon &dist &tmp
+   calc/fmt=<%5.4@f> r &dist = 111.1 * "dist
+
+   set "cnt signoise "dist
+   set/file "cnt dcvreg "pcrlat
+   set/file "cnt dcvinci "pcrlon
+   calc i &cnt = "cnt + 1
+   goto set_start:
+set_exit:
+
+@SYSTEM |rm|$BLANK|PROJ|*|
+
+del h:all
+
+return

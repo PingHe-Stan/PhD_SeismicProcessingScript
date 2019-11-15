@@ -1,0 +1,120 @@
+! RFCCPTOPO.SHC
+! ==================================================
+!
+! Perform RF CCP stacking along profile in lat, lon or distance, with specific range of backazimuth of RFs:
+! The newly created CCPSTACK Qfile will be used for the retrieval of Moho depth, identified as the Maximal Value within pre-designated windows, and finally PSDEPTH.STX file will be created for further GMT plotting.
+!
+! 
+! Original RFCCPSTACK file. Date: 2016-10-13 Written by: Stan He
+! Two other self-written SHCs are required: PSPIERPROFILE.SHC, CCPSTACK.SHC
+! 
+! The final span of RF traces for plotting is from -5 s to 35 s.
+!
+! Date: 2016-10-23 
+
+default 1 RF Enter the name of RF file to be read:
+default 2 20 Enter the bin or window size to average RFs:
+default 3 10 Enter the shifting span, MUST larger than zero:
+default 4 0 Enter the start value of lat lon or dist for CCP Stacking:
+default 5 300 Enter the end value of lat lon or dist for CCP Stacking:
+default 6 55 Enter the depth for calculation of conversion lat and lon:
+default 7 signoise Enter the Qheader for CCP stacking identifier:
+default 8 7.8 Enter the estimated distance to correct elevation:
+default 9 0 Enter the backazimuth of interest for CCP stacking:
+default 10 360 Enter the backazimuth of interest for CCP stacking:
+default 11 line_aa Enter the profile line to calculate projected distance:
+default 12 6 Lowerbound for Primary win that is believed to contain Moho phase:
+default 13 9 Upperbound for Primary windows containing Moho phase in second:
+default 14 4 Lowerbound for Secondary window that contain a discontiuity of inter
+est: 
+default 15 6 Upperbound for Secondary window duration:
+
+
+
+sdef lowerazi #9
+sdef upperazi #10
+
+read #1 all
+
+! Only RFs from specific range of backazimuth will be kept for further analysis
+del _comp(t)
+del _azimuth~("lowerazi:"upperazi)
+
+! Perform moveout-correction and elevation correction for coherent Ps phase stacking
+shift all -10
+
+
+! Step One: Set the header of RFs in display, the projected pr-lat,pr-lon,and distance will be written for CCPSTACK, and then Perform CCPSTACK
+!
+pspierprofile #6 #11
+nr
+rfelecor #8
+rd
+! Note: After PSPIERPROFILE.SHC operation, Three Kinds of Header (dcvreg, dcvinci, signoise)  will be updated based on the projected PS points.
+
+
+psmout ;;;-8;50;;
+! Step Two: Perform CCP stacking and New file will be generated and deleted automatically using subroutine ccpstack
+del h:all
+
+ccpstack #2 #3 #4 #5 #7 #7
+
+! Note: After CCPSTACK.SHC operation, THREE KINDS of Header will be updated, one is the Identifier Header(dcvreg, dcvinci, signoise), another one is "mark" where the number of traces for each summation will be kept for possible illustration, the last one is "station", which belongs to one of stations under which the traces have been summed during CCP stacking.
+
+del all
+del h:all
+
+
+! Step Two: Read in newly created CCP stacking RF file and generate PSDEPTH.STX for later usage.
+
+
+read |#7|#7| all
+
+shift all -8
+sdef cnt 1
+sdef trcnum $dsptrcs
+sdef max1 
+sdef maxpos1
+sdef max2 
+sdef maxpos2
+sdef com
+
+! Resample trace to be 0.01 sampling spacing in time (seconds)
+resample all 0.01
+
+! Write the Moho and eclogitization depth info into comment
+readmoho_start:
+if "cnt gti "trcnum goto/forward readmoho_exit:
+am "cnt #12 #13 ;;&max1;;&maxpos1
+am "cnt #14 #15 ;;&max2;;&maxpos2
+calc s &com = |Primary|$BLANK|"max1|$BLANK|"maxpos1|
+calc s &com = |"com|$BLANK|Secondary|$BLANK|"max2|$BLANK|"maxpos2|
+set "cnt comment "com
+calc i &cnt = "cnt + 1
+goto readmoho_start:
+readmoho_exit:
+
+sdef counter
+sdef sla
+sdef slo
+sdef sele
+
+! Write out the Moho info for the Moho topography
+calc i &counter = 1
+echo_ch psdepth
+echo station slat slon elevation ps-latitude ps-longitude ps-amplitude ps-times
+topo_start:
+if "counter gti "trcnum goto/forward topo_exit:
+call statloc ^station("counter) &sla &slo;;;&sele
+echo ^station("counter) "sla "slo "sele ^dcvreg("counter) ^dcvinci("counter) ^comment("counter)
+calc i &counter = "counter + 1
+goto topo_start:
+topo_exit:
+echo_ch
+
+!shgmt #7 -5 35
+
+@SYSTEM |rm|$BLANK|#7|*|
+@SYSTEM |rm|$BLANK|PSPIER|*|
+
+return

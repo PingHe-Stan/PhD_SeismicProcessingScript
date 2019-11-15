@@ -1,0 +1,15 @@
+! RF station individual wiggle frequency simplified procedure
+default 1 RF Enter the name of RF file to be read:
+default 2 BP_F Enter the bandpass filter:
+
+read #1 all
+del _comp(t)
+shift all -10
+psmout ;;;-8;45;;
+cut all -6 40
+doublefil #2
+shgmt azimuth -5 35
+dtw
+del all
+del h:all
+return

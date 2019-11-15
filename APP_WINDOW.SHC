@@ -1,0 +1,49 @@
+! APP_WINDOW.SHC
+!
+! appends zeros to the beginning and to the end of a trace in order
+! to extend the trace to the whole width of the displaying window.
+! 
+! X. Yuan, Sep. 1997
+!
+default 1 1            trace number
+default 2 $dsp_x       low window boundary
+default 3 $dsp_xmax    high window boundary
+
+sdef t1 ^t-origin(#1)   ! time of first sample
+sdef t2                 ! time of last sample
+sdef time
+
+calc i &t2 = ^length(#1) - 1
+calc r &t2 = "t2 * ^delta(#1)
+calc r &t2 = "t2 + "t1
+
+nr
+if "t1 gtr #2           goto/forward append_left:
+if "t2 ltr #3           goto/forward append_right:
+goto /forward append_exit:
+
+append_left:
+calc r &time = "t1 - #2
+create random ^delta(#1) "time 0
+mirror #1
+append $dsptrcs #1
+mirror #1
+del $dsptrcs
+calc r &time = 0 - "time
+shift #1 "time
+calc t &time = ^start(#1) tadd "time
+set #1 start "time
+
+if "t2 ltr #3           goto/forward append_right:
+goto /forward append_exit:
+
+append_right:
+calc r &time = #3 - "t2
+create random ^delta(#1) "time 0
+append $dsptrcs #1
+del $dsptrcs
+
+append_exit:
+rd
+return
+

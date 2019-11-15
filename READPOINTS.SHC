@@ -1,0 +1,36 @@
+! Read Piercing Points or Any required Points from ALL traces in Memory
+!      =============
+!
+! This script is created in order to retrieve piercing points along certain profile
+! Written by: Ping He Date: 2015.12.24
+! 
+! DCVREG = PSPOINTS LAT && DCVINCI = PSPOINTS LON 
+! PSPOINTS FILE $1 denotes LON $2 LAT
+
+echo The Header should contain DCVREG and DCVINCI that represents Lat and Lon of Piercing Points!"
+
+default 1 PROFILE        Enter the file name containing desired pspoints in current directory(DEFAULT: PROFILE):
+default 2 PROFILE        Enter the name of output Q-file that contains all required points(DEFAULT: PROFILE):
+
+sdef cnt 1
+sdef pslat
+sdef pslon
+
+nr
+hide all
+
+calc i &cnt = 1
+disp_start:
+if "cnt gti %#1(0)   goto/forward disp_exit:
+calc s &pslat = %#1("cnt) parse 2
+calc s &pslon = %#1("cnt) parse 1
+display _dcvreg("pslat)
+hide _dcvinci~("pslon)
+write #2 all 
+calc i &cnt = "cnt + 1
+goto disp_start:
+disp_exit:
+
+return
+
+

@@ -1,0 +1,46 @@
+! display traces in order of station code and component Z,N,E
+! XY Feb.2003
+! Revised by PH Dec.2015
+
+sdef cnt 1
+sdef num
+sdef com
+
+echo_ch/new display_zne.tmp
+
+echo_start:
+  if "cnt gti $dsptrcs     goto/forward echo_exit:
+  echo ^station("cnt) ^origin("cnt) ^azimuth("cnt) ^comp("cnt) ^recno("cnt)
+  calc i &cnt = "cnt + 1
+  goto echo_start:
+echo_exit:
+
+echo_ch
+
+
+switch capcnv off
+CALC S &COM = sort
+CALC S &COM = |"COM|$BLANK|DISPLAY_ZNE.TMP>DISPLAY_ZNE.TMP1|
+ECHO_CH/NEW DISPLAY_ZNE.TMP0
+ECHO "COM
+ECHO_CH
+SYSTEM |csh|$BLANK|DISPLAY_ZNE.TMP0|
+SWITCH CAPCNV ON
+
+nr
+calc i &cnt = 1
+disp_start:
+if "cnt gti %DISPLAY_ZNE.TMP1(0)   goto/forward disp_exit:
+calc s &num = %DISPLAY_ZNE.TMP1("cnt) parse 5
+display _recno("num)
+calc i &cnt = "cnt + 1
+goto disp_start:
+disp_exit:
+
+@SYSTEM |rm|$BLANK|DISPLAY_ZNE.TMP|
+@SYSTEM |rm|$BLANK|DISPLAY_ZNE.TMP1|
+@SYSTEM |rm|$BLANK|DISPLAY_ZNE.TMP0|
+
+rd
+
+return

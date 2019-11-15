@@ -1,0 +1,58 @@
+! RFLOCDIFF.SHC - Calculate the distance of location of receivers or conversion points to a designated point (Latitude, Longitude) in display window
+!
+!      =============
+!
+! This script is created in order to calculate the distance of the receivers or obtained RF of each trace in display to a manually specified point, and then store the distance into header "signoise" for further usage.
+!
+! Written by: Ping He Date: 2016.10.8
+! 
+!  #1 = Type for calculating distance ( 1 - Recording Station Location; 2 - Conversion Points)  #2 = Latitude of specified point #3 = Longitude of specified point #4 = Header to store this value for further operation 
+! 
+! 
+
+default 1 1         Distance Type 1-Betw. station and ThePoint, 2-Betw.PsPier and ThePoint
+default 2 0         Latitude of ThePoint - MUST be specified explicitly
+default 3 0         Longitude of ThePoint - MUST be specified explicitly
+default 4 signoise  Enter the Header name for the storage of the calculated distance in km
+default 5 45        If Pspier distance is selected, please enter the depth of Ps conversion
+
+sdef cnt 1   ! Counter
+sdef trcnum $dsptrcs ! Number of traces in display
+sdef slat 
+sdef slon 
+sdef dist
+sdef tmp
+
+if #1 eqi 1 goto/forward dist_sta:
+if #1 eqi 2 goto/forward dist_pspier:
+echo The distance type you key in is not valid.
+return
+
+dist_sta:
+if "cnt gti "trcnum goto/forward dist_finish:
+! After "set_station;;" operation, dcvreg and dcvinci will be written with the lat and lon of receiver
+set_station;;
+call locdiff ^dcvreg("cnt) ^dcvinci("cnt) #2 #3 &dist &tmp
+calc/fmt=<%5.4@f> r &dist = 111.1 * "dist
+set/file "cnt signoise "dist
+calc i &cnt = "cnt + 1
+goto dist_sta:
+
+
+dist_pspier:
+pspier #5
+
+dist_pspier_loop:
+if "cnt gti "trcnum goto/forward dist_finish
+! After "pspier 45" operation, dcvreg and dcvinci will be written with the lat and lon of Ps conversion point belonging to one certain station-event pair/one RF trace
+call locdiff ^dcvreg("cnt) ^dcvinci("cnt) #2 #3 &dist &tmp
+calc/fmt=<%5.4@f> r &dist = 111.1 * "dist
+set/file "cnt signoise "dist
+calc i &cnt = "cnt + 1
+goto dist_pspier_loop:
+
+dist_finish:
+
+rd
+return
+

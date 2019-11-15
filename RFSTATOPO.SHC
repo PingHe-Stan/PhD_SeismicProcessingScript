@@ -1,0 +1,152 @@
+! RFSTATOPO.SHC
+!
+! ======================
+!
+! To Retrieve Moho info Station by Station
+!
+! (1) Retrieve the Arrival time of Pms phase in displayed traces and store their info in Q Header "comment"; (2) Create a file that contains Ps piercing points lat, lon, and its delay times for further discontiuity topography plotting.
+! 
+! For in Himalaya region, the eclogitization of lower crust is a common phenomenon, which often results in a doublet Moho phase from 30 to 70 km
+!
+! In order to distinguish the Ps by eclogitization from the Ps by Moho properly,we need to mannually designate two time windows for identifying these phases.
+! The earlier window for Ps inspection is for eclogite transition, and the later window is for Moho identification.
+!
+! Such differentiated windows method that is based on prior information of blurred/indefinite Moho depth for retrieving the observed Moho depth of current study(inspect Moho or other discontinuity-rendered phase within a much shorter period of time) is highly error-preventive for further automatically determination of Moho depth or crustal thickness.
+!
+! There are two windows for identifying discontiuity(velocity-leap) phases, the primary one is the commonly-believed Moho phases, the secondary one is a Moho-like phase that could be caused by eclogitization process. 
+! Note: the secondary phases could also be mid-crust discontiuity or conrad/sedimentary or any other interested discontiuity.
+!
+! The maximal value and its time position for each window will be stored in Qheader "comment".
+! NOTE: The reason why maximal value is stored is that it can serve as a critical weighing factor for the final time determination. Since even though the range of Moho arrival time is roughly predictable, the precise time position of maximal value will very often differ from trace to trace. When this happens, we need extra information to better evaluate each timing of different traces.
+!  
+! 
+! Date: 2016-10-9 By: Ping He 
+!
+! For Profile Analysis with no evident Moho dipping structure, the span of window for inspection should be no more than three seconds.
+!
+! For Station Analysis, the window span for Ps phase detection should be within two seconds (~20 km).
+!
+! Thus the span for detecting Ps phase is highly heterogeneous and strongly dependent on prior information of each station.
+! The span can even be determined automatically based on station info (such as station name, station location), which makes this procedure become a subroutine process.
+!
+! Prior to this operation, PSMOUT should be performed, and it should only be performed once. One way to check whether PSMOUT has been executed is to see where there exists a flat artifical appendage at the end of RF in display.
+! Prior to this operation, elevation correction should also be performed, so the timing after zero means only the depth below sea-level surface. 
+! Prior to this operation, like most other operation, the trace should be in display.
+!
+!Date: 2016-10-23 By: Ping He
+!
+
+
+default 1 6 Lowerbound for Primary win that is believed to contain Moho phase:
+default 2 9 Upperbound for Primary windows containing Moho phase in second:
+default 3 4 Lowerbound for Secondary window that contain a discontiuity of interest: 
+default 4 6 Upperbound for Secondary window duration:
+default 5 55 Calculate Ps Conversion Locations for certain depth:
+default 6 RF Enter the name of station-based Qfile for Moho Retrieval:
+default 7 7.0 Enter the value of estimated travel distance per delay time:
+
+sdef cnt 1
+sdef max1 
+sdef maxpos1
+sdef max2 
+sdef maxpos2
+sdef com
+
+! Operation starts here.
+read #6 all
+del _comp~(q)
+shift all -10
+
+! Topography correction
+rfelecor #7
+cut all -8 90
+
+! Moveout correction
+psmout ;;;-6;45;;
+del h:all
+
+! Resample trace to be 0.01 sampling spacing in time (seconds)
+resample all 0.01
+
+sdef trcnum $dsptrcs
+
+readmoho_start:
+if "cnt gti "trcnum goto/forward readmoho_exit:
+am "cnt #1 #2 ;;&max1;;&maxpos1
+am "cnt #3 #4 ;;&max2;;&maxpos2
+calc s &com = |Primary|$BLANK|"max1|$BLANK|"maxpos1|
+calc s &com = |"com|$BLANK|Secondary|$BLANK|"max2|$BLANK|"maxpos2|
+set/file/mod "cnt comment "com
+calc i &cnt = "cnt + 1
+goto readmoho_start:
+readmoho_exit:
+
+! From here starts the second loop.
+calc i &cnt = 1
+sdef slat
+sdef slon
+sdef pcrlat
+sdef pcrlon
+
+! The following is excerpt from PSPIER.SHC
+! echo some values to file DSLOW.STX which is served as input file
+! of fortran program "pspier"
+
+echo_ch/new dslow
+echo $dsptrcs #5
+e_start:
+   if  "cnt gti $dsptrcs  goto/forward e_exit:
+   call statloc ^station("cnt) &slat &slon
+   echo "slat "slon ^slowness("cnt) ^azimuth("cnt)
+   calc i &cnt = "cnt + 1
+   goto e_start:
+e_exit:
+echo_ch
+
+! call fortran program "pspier" to calculate piercing points.
+! output to file PSPIER.STX
+@ SYSTEM pspier
+@ SYSTEM |rm|$BLANK|DSLOW.STX|
+
+! writes pcr-lat and pcr-lon to header DCVREG and DCVINCI.
+echo
+echo ...writing pcr-lat and pcr-lon to header DCVREG and DCVINCI
+
+! The header will be modified according to Ps conversion points.
+calc i &cnt = 1
+set_start:
+   if  "cnt gti $dsptrcs  goto/forward set_exit:
+   calc s &pcrlat =  %pspier("cnt) parse 5
+   calc s &pcrlon =  %pspier("cnt) parse 6
+   set/file/mod "cnt dcvreg "pcrlat
+   set/file/mod "cnt dcvinci "pcrlon
+   calc i &cnt = "cnt + 1
+   goto set_start:
+set_exit:
+
+@SYSTEM |rm|$BLANK|PSPIER|*|
+
+sdef counter
+sdef sla
+sdef slo
+sdef sele
+
+
+! The following generates the input file for the Moho topography
+
+calc i &counter = 1
+echo_ch psdepth
+echo station slat slon elevation ps-latitude ps-longitude ps-amplitude ps-times
+topo_start:
+if "counter gti "trcnum goto/forward topo_exit:
+call statloc ^station("counter) &sla &slo;;;&sele
+echo ^station("counter) "sla "slo "sele ^dcvreg("counter) ^dcvinci("counter) ^comment("counter)
+calc i &counter = "counter + 1
+goto topo_start:
+topo_exit:
+echo_ch
+
+@SYSTEM |rm|$BLANK|PSMOUT|*|
+
+return
+

@@ -1,0 +1,33 @@
+! file PPRERUN.SHC
+!      =============
+! This procedure is mainly used to test the optimum span of ro3c.
+! PRF pre-run will align the raw data, cut it, and if it is sorted in E,N,Z, the display_zne_hp will be called to make it sort in Z,N,E order.
+! Date: 2016-6-17 Authored by Ping He
+
+default 1 -5 The beginning time to computer maximal polarisation for ro3c
+default 2 12 The end time of ro3c
+default 3 Duration The duration around P-onset is (in seconds)
+
+! PRF Pre-Run
+al all p-onset
+cut all -20 120
+display_zne_hp
+
+! Direct the echo channel to a FILE
+echo_ch #3
+
+! Incorporated RO3C
+ro3c #1 #2
+
+! Direct the echo channel back to terminal
+echo_ch
+
+! Delete hid traces from memory
+del h:all 
+
+! Return to the upper command level
+return
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!Conclusion is that by comparison between Real angle and Theoretical angle, SomeErroneous traces would be spotted. Due to the great disparity between them (>30 degrees)
+!Another finding is that usually the duration from 10-15 after P-onset is good enough 

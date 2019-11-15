@@ -1,0 +1,28 @@
+! file CALCPRF.SHC
+!      =============
+!
+! calculate PRF using one command
+! Version 2.0 compared with CALCPRF
+! The Rotation is changed to real angle rotation instead of theoretical angle
+! The Redundancy is reduced using "del h:all"
+! Date: 2016-6-17
+
+! PRF Pre-Run & Output the rotation angle comparison
+al all p-onset
+cut all -20 120
+display_zne_hp
+resample all 0.025
+
+echo_ch Re_Th_Rot
+
+! The span to compute maximal polarisation is from -5 to 12 seconds on trace with respect to P-onset
+ro3c -5 12
+echo_ch
+del h:all
+
+!Deconvolution starts here
+dec3 -5 45 1
+del h:all
+cut all -10 110
+
+return
